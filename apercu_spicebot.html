@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SpiceBot — Visual Preview</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  :root {
+    --bg: #313338; --sidebar: #2b2d31; --hover: #35373c; --text: #dbdee1;
+    --muted: #949ba4; --link: #00a8fc; --gold: #C8A535; --gold-lt: #E8C547;
+    --green: #23a559; --green-btn: #248046; --blue-btn: #5865f2; --red: #ed4245;
+    --embed-bg: #2b2d31;
+  }
+  body { font-family: 'Rajdhani', sans-serif; background: #111214; min-height: 100vh; padding: 40px 20px; display: flex; flex-direction: column; align-items: center; }
+  .page-title { text-align: center; margin-bottom: 48px; }
+  .page-title h1 { font-family: 'Cinzel', serif; font-size: 26px; color: var(--gold-lt); letter-spacing: 2px; margin-bottom: 6px; }
+  .page-title p { color: var(--muted); font-size: 13px; letter-spacing: 2px; text-transform: uppercase; }
+  .section { width: 100%; max-width: 780px; margin-bottom: 36px; }
+  .section-label { font-size: 10px; font-weight: 700; letter-spacing: 2.5px; text-transform: uppercase; color: var(--gold); margin-bottom: 10px; padding-left: 2px; display: flex; align-items: center; gap: 10px; }
+  .section-label::after { content: ''; flex: 1; height: 1px; background: linear-gradient(to right, #C8A53550, transparent); }
+  .dw { background: var(--bg); border-radius: 10px; overflow: hidden; border: 1px solid #1a1b1e; box-shadow: 0 20px 60px rgba(0,0,0,.55); animation: up .35s ease both; }
+  @keyframes up { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
+  .ch-header { background: var(--bg); border-bottom: 1px solid #1e1f22; padding: 11px 16px; display: flex; align-items: center; gap: 8px; }
+  .ch-header .hash { color: var(--muted); font-size: 20px; font-weight: 700; line-height: 1; }
+  .ch-header .name { color: var(--text); font-weight: 700; font-size: 15px; }
+  .ch-header .div { color: #4e5058; margin: 0 6px; }
+  .ch-header .topic { color: var(--muted); font-size: 12px; }
+  .msgs { padding: 14px 14px 18px; display: flex; flex-direction: column; gap: 1px; }
+  .msg { display: flex; gap: 14px; padding: 4px 8px; border-radius: 4px; }
+  .msg:hover { background: var(--hover); }
+  .av { width: 40px; height: 40px; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 16px; margin-top: 2px; }
+  .av.bot { background: linear-gradient(135deg, #C8A535, #8B6914); }
+  .av.u1 { background: linear-gradient(135deg, #5865f2, #4752c4); font-size: 12px; font-weight: 700; color: #fff; }
+  .av.u2 { background: linear-gradient(135deg, #e91e8c, #a51357); font-size: 12px; font-weight: 700; color: #fff; }
+  .mb { flex: 1; }
+  .mh { display: flex; align-items: baseline; gap: 8px; margin-bottom: 3px; }
+  .un { font-weight: 700; font-size: 15px; color: var(--text); }
+  .un.gold { color: var(--gold-lt); }
+  .badge { background: var(--blue-btn); color: #fff; font-size: 9px; font-weight: 700; padding: 1px 5px; border-radius: 3px; letter-spacing: .5px; text-transform: uppercase; }
+  .ts { color: var(--muted); font-size: 11px; }
+  .mc { color: var(--text); font-size: 15px; line-height: 1.5; }
+  .slash { color: var(--link); font-weight: 600; }
+  .btns { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+  .btn { padding: 8px 16px; border-radius: 4px; font-family: 'Rajdhani', sans-serif; font-size: 14px; font-weight: 700; cursor: pointer; border: none; display: flex; align-items: center; gap: 6px; transition: filter .15s; }
+  .btn:hover { filter: brightness(1.15); }
+  .btn.g { background: var(--green-btn); color: #fff; }
+  .btn.b { background: var(--blue-btn); color: #fff; }
+  .embed { margin-top: 8px; background: var(--embed-bg); border-left: 4px solid var(--gold); border-radius: 0 4px 4px 0; padding: 12px 16px; max-width: 500px; }
+  .embed.gr { border-left-color: var(--green); }
+  .embed.rd { border-left-color: var(--red); }
+  .etitle { font-family: 'Cinzel', serif; font-size: 15px; color: var(--gold-lt); font-weight: 700; margin-bottom: 12px; }
+  .etitle.gr { color: #57f287; }
+  .etitle.rd { color: #f28b82; }
+  .efields { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+  .efields.full { grid-template-columns: 1fr; }
+  .fn { font-size: 10px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .8px; margin-bottom: 3px; }
+  .fv { font-size: 15px; font-weight: 700; color: var(--text); }
+  .fv.gold { color: var(--gold-lt); }
+  .fv.list { font-weight: 400; font-size: 14px; line-height: 1.8; }
+  .fv.list span { color: var(--gold-lt); font-weight: 600; }
+  .fv.list span.gr { color: #57f287; }
+  .efooter { margin-top: 10px; font-size: 11px; color: var(--muted); padding-top: 8px; border-top: 1px solid #3f4147; }
+  .sel { margin-top: 8px; max-width: 430px; }
+  .sel-open { background: #1e1f22; border: 1px solid var(--blue-btn); border-radius: 4px; overflow: hidden; box-shadow: 0 8px 24px rgba(0,0,0,.5); }
+  .sel-search { padding: 8px 12px; background: #111214; border-bottom: 1px solid #2b2d31; color: var(--muted); font-size: 13px; }
+  .opt { padding: 8px 12px; display: flex; align-items: center; gap: 10px; cursor: pointer; font-size: 14px; color: var(--text); transition: background .1s; }
+  .opt:hover { background: #35373c; }
+  .opt.on { background: #404249; }
+  .chk { color: var(--green); font-size: 16px; width: 18px; }
+  .mini-av { width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; color: #fff; }
+  .lrow { display: flex; align-items: center; gap: 10px; padding: 5px 0; border-bottom: 1px solid #3f4147; font-size: 14px; }
+  .lrow:last-of-type { border-bottom: none; }
+  .lrank { width: 28px; color: var(--muted); font-size: 13px; }
+  .lname { flex: 1; color: var(--text); font-weight: 600; }
+  .lamt { color: var(--gold-lt); font-weight: 700; }
+  .prow { display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px solid #3f4147; font-size: 14px; }
+  .prow:last-of-type { border-bottom: none; }
+  .pamt { color: var(--red); font-weight: 700; }
+  .arrow { text-align: center; color: var(--gold); font-size: 20px; margin: -6px 0 18px; opacity: .5; }
+  code { background: #1e1f22; padding: 1px 5px; border-radius: 3px; font-size: 13px; color: #b9bbbe; }
+</style>
+</head>
+<body>
+
+<div class="page-title">
+  <h1>🪱 SpiceBot — Visual Preview</h1>
+  <p>Muppet's of Rodin &middot; Dune Awakening</p>
+</div>
+
+<!-- STEP 1 -->
+<div class="section">
+  <div class="section-label">Step 1 — Officer types /spice</div>
+  <div class="dw">
+    <div class="ch-header"><span class="hash">#</span><span class="name">spice-log</span><span class="div">|</span><span class="topic">Spice deposits — Muppet's of Rodin</span></div>
+    <div class="msgs">
+      <div class="msg"><div class="av u1">SA</div><div class="mb"><div class="mh"><span class="un">Saryrders</span><span class="ts">Today at 21:04</span></div><div class="mc"><span class="slash">/spice</span></div></div></div>
+      <div class="msg"><div class="av bot">🪱</div><div class="mb">
+        <div class="mh"><span class="un gold">SpiceBot</span><span class="badge">BOT</span><span class="ts">Today at 21:04</span></div>
+        <div class="mc">🪱 <strong>Spice Deposit — Muppet's of Rodin</strong><br>How much spice was farmed?</div>
+        <div class="btns"><button class="btn g">50,000 spices</button><button class="btn g">75,000 spices</button><button class="btn b">✏️ Custom</button></div>
+      </div></div>
+    </div>
+  </div>
+</div>
+<div class="arrow">↓</div>
+
+<!-- STEP 2 -->
+<div class="section">
+  <div class="section-label">Step 2 — Select participating members</div>
+  <div class="dw">
+    <div class="ch-header"><span class="hash">#</span><span class="name">spice-log</span><span class="div">|</span><span class="topic">Spice deposits — Muppet's of Rodin</span></div>
+    <div class="msgs">
+      <div class="msg"><div class="av bot">🪱</div><div class="mb">
+        <div class="mh"><span class="un gold">SpiceBot</span><span class="badge">BOT</span><span class="ts">Today at 21:04</span></div>
+        <div class="mc">🪱 <strong>75,000 spices</strong> — Who participated in the farm?</div>
+        <div class="sel"><div class="sel-open">
+          <div class="sel-search">🔍 Search a member...</div>
+          <div class="opt on"><span class="chk">✓</span><div class="mini-av" style="background:linear-gradient(135deg,#5865f2,#4752c4)">SA</div>Saryrders</div>
+          <div class="opt on"><span class="chk">✓</span><div class="mini-av" style="background:linear-gradient(135deg,#e91e8c,#a51357)">AM</div>Amenace</div>
+          <div class="opt on"><span class="chk">✓</span><div class="mini-av" style="background:linear-gradient(135deg,#f5a623,#c47d0e)">DR</div>DuneRider</div>
+          <div class="opt"><span class="chk"></span><div class="mini-av" style="background:linear-gradient(135deg,#43b581,#2d7a57)">MK</div>Muad_Kwisatz</div>
+          <div class="opt"><span class="chk"></span><div class="mini-av" style="background:linear-gradient(135deg,#b45309,#7c3a07)">SW</div>SandWalker</div>
+        </div></div>
+      </div></div>
+    </div>
+  </div>
+</div>
+<div class="arrow">↓</div>
+
+<!-- STEP 3 -->
+<div class="section">
+  <div class="section-label">Step 3 — Result posted in channel</div>
+  <div class="dw">
+    <div class="ch-header"><span class="hash">#</span><span class="name">spice-log</span><span class="div">|</span><span class="topic">Spice deposits — Muppet's of Rodin</span></div>
+    <div class="msgs">
+      <div class="msg"><div class="av bot">🪱</div><div class="mb">
+        <div class="mh"><span class="un gold">SpiceBot</span><span class="badge">BOT</span><span class="ts">Today at 21:04</span></div>
+        <div class="mc">✅ Deposit recorded! Use <code>/spicegive</code> to see pending debts.</div>
+        <div class="embed">
+          <div class="etitle">🪱 Spice Deposit — Muppet's of Rodin</div>
+          <div class="efields">
+            <div><div class="fn">📦 Total farmed</div><div class="fv gold">75,000 spices</div></div>
+            <div><div class="fn">🏰 Guild share (10%)</div><div class="fv">7,500 spices</div></div>
+            <div><div class="fn">👤 Share / member</div><div class="fv">22,500 spices</div></div>
+          </div>
+          <div class="efields full"><div>
+            <div class="fn">👥 Participants</div>
+            <div class="fv list">• Saryrders — <span>22,500 spices</span><br>• Amenace — <span>22,500 spices</span><br>• DuneRider — <span>22,500 spices</span></div>
+          </div></div>
+          <div class="efooter">Submitted by Saryrders • 04/05/2026, 21:04:32</div>
+        </div>
+      </div></div>
+    </div>
+  </div>
+</div>
+<div class="arrow">↓</div>
+
+<!-- /spicegive -->
+<div class="section">
+  <div class="section-label">/spicegive — pending debts (authorized only)</div>
+  <div class="dw">
+    <div class="ch-header"><span class="hash">#</span><span class="name">spice-log</span><span class="div">|</span><span class="topic">Spice deposits — Muppet's of Rodin</span></div>
+    <div class="msgs">
+      <div class="msg"><div class="av u1">SA</div><div class="mb"><div class="mh"><span class="un">Saryrders</span><span class="ts">Today at 21:10</span></div><div class="mc"><span class="slash">/spicegive</span></div></div></div>
+      <div class="msg"><div class="av bot">🪱</div><div class="mb">
+        <div class="mh"><span class="un gold">SpiceBot</span><span class="badge">BOT</span><span class="ts">Today at 21:10</span></div>
+        <div class="embed rd">
+          <div class="etitle rd">💸 Spice to distribute</div>
+          <div class="prow"><span><strong>• Saryrders</strong></span><span class="pamt">22,500 spices to give</span></div>
+          <div class="prow"><span><strong>• Amenace</strong></span><span class="pamt">22,500 spices to give</span></div>
+          <div class="prow"><span><strong>• DuneRider</strong></span><span class="pamt">22,500 spices to give</span></div>
+          <div class="efooter">Use /spicedone to mark members as paid</div>
+        </div>
+      </div></div>
+    </div>
+  </div>
+</div>
+<div class="arrow">↓</div>
+
+<!-- /spicedone -->
+<div class="section">
+  <div class="section-label">/spicedone — mark members as paid</div>
+  <div class="dw">
+    <div class="ch-header"><span class="hash">#</span><span class="name">spice-log</span><span class="div">|</span><span class="topic">Spice deposits — Muppet's of Rodin</span></div>
+    <div class="msgs">
+      <div class="msg"><div class="av u1">SA</div><div class="mb"><div class="mh"><span class="un">Saryrders</span><span class="ts">Today at 21:12</span></div><div class="mc"><span class="slash">/spicedone</span></div></div></div>
+      <div class="msg"><div class="av bot">🪱</div><div class="mb">
+        <div class="mh"><span class="un gold">SpiceBot</span><span class="badge">BOT</span><span class="ts">Today at 21:12</span></div>
+        <div class="mc">✅ Select the members who received their spice:</div>
+        <div class="sel"><div class="sel-open">
+          <div class="sel-search">🔍 Search...</div>
+          <div class="opt on"><span class="chk">✓</span><div class="mini-av" style="background:linear-gradient(135deg,#5865f2,#4752c4)">SA</div>Saryrders — 22,500 spices</div>
+          <div class="opt on"><span class="chk">✓</span><div class="mini-av" style="background:linear-gradient(135deg,#e91e8c,#a51357)">AM</div>Amenace — 22,500 spices</div>
+          <div class="opt"><span class="chk"></span><div class="mini-av" style="background:linear-gradient(135deg,#f5a623,#c47d0e)">DR</div>DuneRider — 22,500 spices</div>
+        </div></div>
+        <div class="embed gr">
+          <div class="etitle gr">✅ Payments recorded</div>
+          <div class="fv list">• <strong>Saryrders</strong> — <span class="gr">22,500 spices paid ✓</span><br>• <strong>Amenace</strong> — <span class="gr">22,500 spices paid ✓</span></div>
+          <div class="efooter">Marked by Saryrders • 04/05/2026, 21:12:48</div>
+        </div>
+      </div></div>
+    </div>
+  </div>
+</div>
+<div class="arrow">↓</div>
+
+<!-- /total -->
+<div class="section">
+  <div class="section-label">/total — Top 20 Ladder (visible to everyone)</div>
+  <div class="dw">
+    <div class="ch-header"><span class="hash">#</span><span class="name">spice-log</span><span class="div">|</span><span class="topic">Spice deposits — Muppet's of Rodin</span></div>
+    <div class="msgs">
+      <div class="msg"><div class="av u2">MK</div><div class="mb"><div class="mh"><span class="un">Muad_Kwisatz</span><span class="ts">Today at 21:20</span></div><div class="mc"><span class="slash">/total</span></div></div></div>
+      <div class="msg"><div class="av bot">🪱</div><div class="mb">
+        <div class="mh"><span class="un gold">SpiceBot</span><span class="badge">BOT</span><span class="ts">Today at 21:20</span></div>
+        <div class="embed">
+          <div class="etitle">🏆 Spice Ladder — Top 20 · Muppet's of Rodin</div>
+          <div class="lrow"><span class="lrank">🥇</span><span class="lname">Saryrders</span><span class="lamt">247,500 spices</span></div>
+          <div class="lrow"><span class="lrank">🥈</span><span class="lname">Amenace</span><span class="lamt">202,500 spices</span></div>
+          <div class="lrow"><span class="lrank">🥉</span><span class="lname">DuneRider</span><span class="lamt">180,000 spices</span></div>
+          <div class="lrow"><span class="lrank">4.</span><span class="lname">Muad_Kwisatz</span><span class="lamt">135,000 spices</span></div>
+          <div class="lrow"><span class="lrank">5.</span><span class="lname">SandWalker</span><span class="lamt">112,500 spices</span></div>
+          <div class="efooter">Total spice received since the beginning • /spice to deposit</div>
+        </div>
+      </div></div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

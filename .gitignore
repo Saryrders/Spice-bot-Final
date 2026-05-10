@@ -1,0 +1,15 @@
+﻿# Secrets
+.env
+.env.local
+*.key
+*.pem
+
+# Dépendances Node
+node_modules/
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
