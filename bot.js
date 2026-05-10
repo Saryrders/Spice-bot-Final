@@ -28,10 +28,9 @@ const AUTHORIZED_USERS = [
   'ssyith',            // Rayne
   'opiuz',             // Opiuz
   'mainrex_',          // Main Rex — update if wrong
-  // Add exact Discord usernames for Amenace, Smeg, Gnomie below:
-  // 'amenace_username',
-  // 'smeg_username',
-  // 'gnomie_username',
+ 'menace2x4b523pb.s', // Amenace — update if wrong
+  '_devrandom_',   // Gnomie — update if wrong
+'dandmike',             // Smeg — update if wrong
 ];
 
 // Officer IDs — used to skip confirmation button for officers
