@@ -189,7 +189,10 @@ client.on('interactionCreate', async (interaction) => {
           const memberObj = FARMING_MEMBERS.find(m => m.id === id || m.name === id);
           const name = isLegacy ? (memberObj ? memberObj.name : id) : obj.name;
           const amount = isLegacy ? obj : obj.amount;
-          return `• **${name}** — ${amount.toLocaleString()} spices to give`;
+          const status = !isLegacy && obj.status === 'awaiting_confirmation'
+            ? ' ⏳ *awaiting confirmation*'
+            : '';
+          return `• **${name}** — ${amount.toLocaleString()} spices to give${status}`;
         }).join('\n')
       )
       .setFooter({ text: 'Use /spicedone to mark members as paid' });
@@ -206,13 +209,15 @@ client.on('interactionCreate', async (interaction) => {
 
     const data = loadData();
     const pending = data.pendingPayments;
+    // Only show debts that are still pending (not awaiting confirmation, not paid)
     const entries = Object.entries(pending).filter(([, obj]) => {
       if (typeof obj === 'number') return obj > 0;
-      return obj?.amount > 0;
+      if (!(obj?.amount > 0)) return false;
+      return obj.status !== 'awaiting_confirmation';
     });
 
     if (entries.length === 0) {
-      return interaction.reply({ content: '✅ No pending debts!', ephemeral: true });
+      return interaction.reply({ content: '✅ No debts to mark as paid (everything is paid or awaiting confirmation).', ephemeral: true });
     }
 
     // Show a select menu to choose who has been paid
@@ -254,25 +259,41 @@ client.on('interactionCreate', async (interaction) => {
       const memberName = isLegacy ? (memberObj ? memberObj.name : id) : obj.name;
       const amt = isLegacy ? obj : obj?.amount || 0;
       if (amt > 0) {
-        paidDetails.push({ name: memberName, id, amt });
-        if (!data.paymentHistory) data.paymentHistory = [];
-        data.paymentHistory.unshift({
-          date: new Date().toLocaleString('en-GB'),
-          member: memberName,
-          amount: amt,
-          paidBy: interaction.user.username
-        });
-        data.pendingPayments[id] = { name: memberName, amount: 0 };
+        const isOfficer = OFFICER_IDS.includes(id);
+        paidDetails.push({ name: memberName, id, amt, isOfficer });
+
+        if (isOfficer) {
+          // Officers: confirmation skipped, mark as paid right away
+          if (!data.paymentHistory) data.paymentHistory = [];
+          data.paymentHistory.unshift({
+            date: new Date().toLocaleString('en-GB'),
+            member: memberName,
+            amount: amt,
+            paidBy: interaction.user.username
+          });
+          data.pendingPayments[id] = { name: memberName, amount: 0 };
+        } else {
+          // Non-officers: keep the debt active until they click "Received!"
+          data.pendingPayments[id] = {
+            name: memberName,
+            amount: amt,
+            status: 'awaiting_confirmation',
+            sentAt: new Date().toLocaleString('en-GB'),
+            sentBy: interaction.user.username
+          };
+        }
       }
     }
     saveData(data);
 
     const embed = new EmbedBuilder()
-      .setTitle('✅ Payments recorded')
+      .setTitle('✅ Payments marked as sent')
       .setColor(0x23a559)
       .setDescription(
-        paidDetails.map(({ name, amt }) =>
-          `• **${name}** — ${amt.toLocaleString()} spices paid ✓`
+        paidDetails.map(({ name, amt, isOfficer }) =>
+          isOfficer
+            ? `• **${name}** — ${amt.toLocaleString()} spices paid ✓ (officer)`
+            : `• **${name}** — ${amt.toLocaleString()} spices ⏳ awaiting confirmation`
         ).join('\n')
       )
       .setFooter({ text: `Marked by ${interaction.user.username} • ${new Date().toLocaleString('en-GB')}` });
@@ -281,8 +302,7 @@ client.on('interactionCreate', async (interaction) => {
     await interaction.followUp({ embeds: [embed] });
 
     // Post a confirmation button for each paid member
-    for (const { name, id, amt } of paidDetails) {
-      const isOfficer = OFFICER_IDS.includes(id);
+    for (const { name, id, amt, isOfficer } of paidDetails) {
       if (isOfficer) {
         // Officers don't need to confirm — skip button
         await interaction.followUp({
@@ -296,7 +316,7 @@ client.on('interactionCreate', async (interaction) => {
             .setStyle(ButtonStyle.Success)
         );
         await interaction.followUp({
-          content: `💰 <@${id}> — you have been sent **${amt.toLocaleString()} spices**. Please confirm reception:`,
+          content: `💰 <@${id}> — you have been sent **${amt.toLocaleString()} spices**. Please confirm reception (the debt stays open until you confirm):`,
           components: [confirmRow]
         });
       }
@@ -325,6 +345,21 @@ client.on('interactionCreate', async (interaction) => {
       amount: amt,
       confirmed: true
     });
+
+    // Clear the debt now that the member has confirmed reception
+    if (data.pendingPayments?.[memberId]) {
+      data.pendingPayments[memberId] = { name: memberName, amount: 0 };
+    }
+
+    // Add to payment history
+    if (!data.paymentHistory) data.paymentHistory = [];
+    data.paymentHistory.unshift({
+      date: new Date().toLocaleString('en-GB'),
+      member: memberName,
+      amount: amt,
+      paidBy: 'self-confirmed'
+    });
+
     saveData(data);
 
     await interaction.update({
@@ -459,9 +494,12 @@ async function postSplitResult(interaction, amount, members) {
   // Cumulative totals + pending debts (keyed by ID)
   for (const m of memberObjects) {
     data.totals[m.name] = (data.totals[m.name] || 0) + perMember;
+    const previousAmount = data.pendingPayments[m.id]?.amount || 0;
+    // Reset status to 'pending' since there's a new amount to send
     data.pendingPayments[m.id] = {
       name: m.name,
-      amount: (data.pendingPayments[m.id]?.amount || 0) + perMember
+      amount: previousAmount + perMember,
+      status: 'pending'
     };
   }
   saveData(data);
