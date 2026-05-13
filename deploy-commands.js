@@ -8,27 +8,27 @@ const GUILD_ID  = process.env.GUILD_ID;
 const commands = [
   new SlashCommandBuilder()
     .setName('spice')
-    .setDescription('🪱 Enregistrer un dépôt de spice'),
+    .setDescription('🪱 Record a spice deposit'),
 
   new SlashCommandBuilder()
     .setName('spicegive')
-    .setDescription('💸 Voir la liste des spices à distribuer aux membres'),
+    .setDescription('💸 View the list of spice to distribute to members'),
 
   new SlashCommandBuilder()
     .setName('spicedone')
-    .setDescription('✅ Marquer un ou plusieurs membres comme payés'),
+    .setDescription('✅ Mark one or more members as paid'),
 
   new SlashCommandBuilder()
     .setName('past')
-    .setDescription('📜 Voir les 5 derniers dépôts de spice'),
+    .setDescription('📜 View the last 5 spice deposits'),
 
   new SlashCommandBuilder()
     .setName('total')
-    .setDescription('🏆 Ladder Top 20 — visible par tous'),
+    .setDescription('🏆 Top 20 ladder — visible to everyone'),
 
   new SlashCommandBuilder()
     .setName('export')
-    .setDescription('📊 Générer le fichier Excel de traçabilité complète'),
+    .setDescription('📊 Generate the full traceability Excel file'),
 
 ].map(cmd => cmd.toJSON());
 
@@ -36,10 +36,10 @@ const rest = new REST({ version: '10' }).setToken(TOKEN);
 
 (async () => {
   try {
-    console.log('⏳ Enregistrement des commandes slash...');
+    console.log('Registering slash commands...');
     await rest.put(Routes.applicationGuildCommands(CLIENT_ID, GUILD_ID), { body: commands });
-    console.log('✅ Commandes enregistrées !');
+    console.log('Commands registered successfully.');
   } catch (error) {
-    console.error('❌ Erreur :', error);
+    console.error('Error:', error);
   }
 })();
