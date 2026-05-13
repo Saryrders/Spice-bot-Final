@@ -24,13 +24,13 @@ const DATA_FILE        = './spice_data.json';
 //    /past, /export  (right-click on Discord member → Copy username)
 // ─────────────────────────────────────────────────────────────────────────────
 const AUTHORIZED_USERS = [
-  'saryrder',         // Saryrders — update if wrong
-  'ssyith',            // Rayne
-  'opiuz',             // Opiuz
-  'mainrex_',          // Main Rex — update if wrong
- 'menace2x4b523pb.s', // Amenace — update if wrong
-  '_devrandom_',   // Gnomie — update if wrong
-'dandmike',             // Smeg — update if wrong
+  'saryrder',           // Saryrders — update if wrong
+  'ssyith',             // Rayne
+  'opiuz',              // Opiuz
+  'mainrex_',           // Main Rex — update if wrong
+  'menace2x4b523pb.s',  // Amenace
+  'dandmike',           // Smeg
+  '_devrandom_',        // Gnomie
 ];
 
 // Officer IDs — used to skip confirmation button for officers
@@ -73,6 +73,9 @@ function loadData() {
   if (!fs.existsSync(DATA_FILE))
     return { history: [], totals: {}, pendingPayments: {} };
   const d = JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
+  // Make sure all keys exist even if the file was reset to a partial state
+  if (!d.history) d.history = [];
+  if (!d.totals) d.totals = {};
   if (!d.pendingPayments) d.pendingPayments = {};
   return d;
 }
@@ -203,7 +206,10 @@ client.on('interactionCreate', async (interaction) => {
 
     const data = loadData();
     const pending = data.pendingPayments;
-    const entries = Object.entries(pending).filter(([, amt]) => amt > 0);
+    const entries = Object.entries(pending).filter(([, obj]) => {
+      if (typeof obj === 'number') return obj > 0;
+      return obj?.amount > 0;
+    });
 
     if (entries.length === 0) {
       return interaction.reply({ content: '✅ No pending debts!', ephemeral: true });
