@@ -31,6 +31,7 @@ const AUTHORIZED_USERS = [
   'menace2x4b523pb.s',  // Amenace
   'dandmike',           // Smeg
   '_devrandom_',        // Gnomie
+ 'scytalae',        // Shadoweye
 ];
 
 // Officer IDs — used to skip confirmation button for officers
@@ -42,6 +43,7 @@ const OFFICER_IDS = [
   '628650904706613249', // Opiuz
   '1019403846897913866', // Main Rex
   '832705769060827216', // Gnomie
+  '283630077588013057', // Shadow eye
 ];
 
 // 👥 FARMING MEMBERS — fixed list of members that appear in /spice
