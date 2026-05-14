@@ -86,8 +86,8 @@ function saveData(data) {
   fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2));
 }
 
-function calculateSplit(totalSpice, memberCount) {
-  const guildCut = Math.floor(totalSpice * (GUILD_CUT_PERCENT / 100));
+function calculateSplit(totalSpice, memberCount, guildPct = GUILD_CUT_PERCENT) {
+  const guildCut = Math.floor(totalSpice * (guildPct / 100));
   const remaining = totalSpice - guildCut;
   const perMember = memberCount > 0 ? Math.floor(remaining / memberCount) : 0;
   return { guildCut, remaining, perMember };
@@ -106,31 +106,48 @@ client.on('interactionCreate', async (interaction) => {
       return interaction.reply({ content: '🚫 You are not authorized to use this command.', ephemeral: true });
 
     const row = new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId('spice_50k').setLabel('50,000 spices').setStyle(ButtonStyle.Success),
-      new ButtonBuilder().setCustomId('spice_75k').setLabel('75,000 spices').setStyle(ButtonStyle.Success),
-      new ButtonBuilder().setCustomId('spice_custom').setLabel('✏️ Custom').setStyle(ButtonStyle.Primary)
+      new ButtonBuilder().setCustomId('spice_mode_0').setLabel('🎁 0% Guild').setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('spice_mode_10').setLabel('🏛️ 10% Guild').setStyle(ButtonStyle.Primary)
     );
 
     await interaction.reply({
-      content: '🪱 **Spice Deposit — Muppet\'s of Rodin**\nHow much spice was farmed?',
+      content: '🪱 **Spice Deposit — Muppet\'s of Rodin**\nWhat is the guild commission?',
+      components: [row],
+    });
+  }
+
+  // Guild mode selection → show amount buttons
+  if (interaction.isButton() && interaction.customId.startsWith('spice_mode_')) {
+    if (!isAuthorized(interaction)) return interaction.reply({ content: '🚫 Not authorized.', ephemeral: true });
+    const guildPct = interaction.customId.split('_')[2];
+    const modeLabel = guildPct === '0' ? '🎁 **0% guild** — ' : '🏛️ **10% guild** — ';
+
+    const row = new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setCustomId(`spice_50k_${guildPct}`).setLabel('50,000 spices').setStyle(ButtonStyle.Success),
+      new ButtonBuilder().setCustomId(`spice_75k_${guildPct}`).setLabel('75,000 spices').setStyle(ButtonStyle.Success),
+      new ButtonBuilder().setCustomId(`spice_custom_${guildPct}`).setLabel('✏️ Custom').setStyle(ButtonStyle.Primary)
+    );
+
+    await interaction.update({
+      content: `🪱 **Spice Deposit — Muppet\'s of Rodin**\n${modeLabel}How much spice was farmed?`,
       components: [row],
     });
   }
 
   // Amount buttons
-  if (interaction.isButton() && interaction.customId === 'spice_50k') {
+  if (interaction.isButton() && /^spice_(50k|75k)_\d+$/.test(interaction.customId)) {
     if (!isAuthorized(interaction)) return interaction.reply({ content: '🚫 Not authorized.', ephemeral: true });
-    await showMemberSelect(interaction, 50000);
-  }
-  if (interaction.isButton() && interaction.customId === 'spice_75k') {
-    if (!isAuthorized(interaction)) return interaction.reply({ content: '🚫 Not authorized.', ephemeral: true });
-    await showMemberSelect(interaction, 75000);
+    const parts = interaction.customId.split('_');
+    const amount = parts[1] === '50k' ? 50000 : 75000;
+    const guildPct = parseInt(parts[2]);
+    await showMemberSelect(interaction, amount, guildPct);
   }
 
   // Custom button → modal
-  if (interaction.isButton() && interaction.customId === 'spice_custom') {
+  if (interaction.isButton() && /^spice_custom_\d+$/.test(interaction.customId)) {
     if (!isAuthorized(interaction)) return interaction.reply({ content: '🚫 Not authorized.', ephemeral: true });
-    const modal = new ModalBuilder().setCustomId('modal_spice_amount').setTitle('Amount of spice farmed');
+    const guildPct = interaction.customId.split('_')[2];
+    const modal = new ModalBuilder().setCustomId(`modal_spice_amount_${guildPct}`).setTitle('Amount of spice farmed');
     const input = new TextInputBuilder()
       .setCustomId('amount_input').setLabel('Amount of spice')
       .setStyle(TextInputStyle.Short).setPlaceholder('E.g.: 60000').setRequired(true);
@@ -139,18 +156,21 @@ client.on('interactionCreate', async (interaction) => {
   }
 
   // Modal submitted
-  if (interaction.isModalSubmit() && interaction.customId === 'modal_spice_amount') {
+  if (interaction.isModalSubmit() && interaction.customId.startsWith('modal_spice_amount_')) {
+    const guildPct = parseInt(interaction.customId.split('_')[3]);
     const raw = interaction.fields.getTextInputValue('amount_input').replace(/\s/g, '');
     const amount = parseInt(raw);
     if (isNaN(amount) || amount <= 0)
       return interaction.reply({ content: '❌ Invalid amount.', ephemeral: true });
-    await showMemberSelect(interaction, amount);
+    await showMemberSelect(interaction, amount, guildPct);
   }
 
   // Member select
   if (interaction.isStringSelectMenu() && interaction.customId.startsWith('select_members_')) {
-    const amount = parseInt(interaction.customId.split('_')[2]);
-    await postSplitResult(interaction, amount, interaction.values);
+    const parts = interaction.customId.split('_');
+    const amount = parseInt(parts[2]);
+    const guildPct = parts[3] !== undefined ? parseInt(parts[3]) : 10;
+    await postSplitResult(interaction, amount, interaction.values, guildPct);
   }
 
   // ══════════════════════════════════════════════════════════════════════════
@@ -449,36 +469,36 @@ client.on('interactionCreate', async (interaction) => {
 // ─────────────────────────────────────────────────────────────────────────────
 // FUNCTIONS
 // ─────────────────────────────────────────────────────────────────────────────
-async function showMemberSelect(interaction, amount) {
+async function showMemberSelect(interaction, amount, guildPct = 10) {
   if (FARMING_MEMBERS.length === 0)
     return interaction.reply({ content: '❌ No members in FARMING_MEMBERS.', ephemeral: true });
 
   const options = FARMING_MEMBERS.map(m => ({ label: m.name, value: m.id })).slice(0, 25);
 
   const select = new StringSelectMenuBuilder()
-    .setCustomId(`select_members_${amount}`)
+    .setCustomId(`select_members_${amount}_${guildPct}`)
     .setPlaceholder('Select the participating members...')
     .setMinValues(1)
     .setMaxValues(options.length)
     .addOptions(options);
 
+  const modeLabel = guildPct === 0 ? '🎁 0% guild — ' : '🏛️ 10% guild — ';
+
   const fn = interaction.replied || interaction.deferred
     ? interaction.followUp.bind(interaction)
-    : interaction.reply.bind(interaction);
+    : interaction.update.bind(interaction);
 
   await fn({
-    content: `🪱 **${amount.toLocaleString()} spices** — Who participated in the farm?`,
+    content: `🪱 **${amount.toLocaleString()} spices** — ${modeLabel}Who participated in the farm?`,
     components: [new ActionRowBuilder().addComponents(select)],
   });
 }
 
-async function postSplitResult(interaction, amount, members) {
-  const { guildCut, perMember } = calculateSplit(amount, members.length);
+async function postSplitResult(interaction, amount, members, guildPct = 10) {
+  const { guildCut, perMember } = calculateSplit(amount, members.length, guildPct);
 
   const data = loadData();
 
-  // History
-  // Resolve member names from IDs
   const memberObjects = members.map(id => FARMING_MEMBERS.find(m => m.id === id) || { name: id, id });
   const memberNames = memberObjects.map(m => m.name);
 
@@ -493,11 +513,9 @@ async function postSplitResult(interaction, amount, members) {
   };
   data.history.unshift(entry);
 
-  // Cumulative totals + pending debts (keyed by ID)
   for (const m of memberObjects) {
     data.totals[m.name] = (data.totals[m.name] || 0) + perMember;
     const previousAmount = data.pendingPayments[m.id]?.amount || 0;
-    // Reset status to 'pending' since there's a new amount to send
     data.pendingPayments[m.id] = {
       name: m.name,
       amount: previousAmount + perMember,
@@ -506,13 +524,15 @@ async function postSplitResult(interaction, amount, members) {
   }
   saveData(data);
 
+  const guildFieldLabel = guildPct === 0 ? '🏛️ Guild share (0%)' : '🏛️ Guild share (10%)';
+
   const embed = new EmbedBuilder()
     .setTitle('🪱 Spice Deposit — Muppet\'s of Rodin')
     .setColor(0xC8A535)
     .addFields(
-      { name: '🍆 Total farmed',       value: `**${amount.toLocaleString()}** spices`,    inline: true },
-      { name: '🏛️ Guild share (10%)', value: `**${guildCut.toLocaleString()}** spices`,  inline: true },
-      { name: '👤 Share / member',     value: `**${perMember.toLocaleString()}** spices`, inline: true },
+      { name: '🍆 Total farmed',    value: `**${amount.toLocaleString()}** spices`,    inline: true },
+      { name: guildFieldLabel,      value: `**${guildCut.toLocaleString()}** spices`,  inline: true },
+      { name: '👤 Share / member',  value: `**${perMember.toLocaleString()}** spices`, inline: true },
       {
         name: '👥 Participants',
         value: memberNames.map(n => `• **${n}** — ${perMember.toLocaleString()} spices`).join('\n')
