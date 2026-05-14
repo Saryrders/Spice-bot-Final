@@ -106,48 +106,43 @@ client.on('interactionCreate', async (interaction) => {
       return interaction.reply({ content: '🚫 You are not authorized to use this command.', ephemeral: true });
 
     const row = new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId('spice_mode_0').setLabel('🎁 0% Guild').setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId('spice_mode_10').setLabel('🏛️ 10% Guild').setStyle(ButtonStyle.Primary)
+      new ButtonBuilder().setCustomId('spice_50k').setLabel('50,000 spices').setStyle(ButtonStyle.Success),
+      new ButtonBuilder().setCustomId('spice_75k').setLabel('75,000 spices').setStyle(ButtonStyle.Success),
+      new ButtonBuilder().setCustomId('spice_custom').setLabel('✏️ Custom').setStyle(ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId('spice_0guild').setLabel('🎁 0% Guild').setStyle(ButtonStyle.Secondary)
     );
 
     await interaction.reply({
-      content: '🪱 **Spice Deposit — Muppet\'s of Rodin**\nWhat is the guild commission?',
+      content: '🪱 **Spice Deposit — Muppet\'s of Rodin**\nHow much spice was farmed?',
       components: [row],
     });
   }
 
-  // Guild mode selection → show amount buttons
-  if (interaction.isButton() && interaction.customId.startsWith('spice_mode_')) {
+  // Amount buttons (10% guild)
+  if (interaction.isButton() && interaction.customId === 'spice_50k') {
     if (!isAuthorized(interaction)) return interaction.reply({ content: '🚫 Not authorized.', ephemeral: true });
-    const guildPct = interaction.customId.split('_')[2];
-    const modeLabel = guildPct === '0' ? '🎁 **0% guild** — ' : '🏛️ **10% guild** — ';
-
-    const row = new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId(`spice_50k_${guildPct}`).setLabel('50,000 spices').setStyle(ButtonStyle.Success),
-      new ButtonBuilder().setCustomId(`spice_75k_${guildPct}`).setLabel('75,000 spices').setStyle(ButtonStyle.Success),
-      new ButtonBuilder().setCustomId(`spice_custom_${guildPct}`).setLabel('✏️ Custom').setStyle(ButtonStyle.Primary)
-    );
-
-    await interaction.update({
-      content: `🪱 **Spice Deposit — Muppet\'s of Rodin**\n${modeLabel}How much spice was farmed?`,
-      components: [row],
-    });
+    await showMemberSelect(interaction, 50000, 10);
+  }
+  if (interaction.isButton() && interaction.customId === 'spice_75k') {
+    if (!isAuthorized(interaction)) return interaction.reply({ content: '🚫 Not authorized.', ephemeral: true });
+    await showMemberSelect(interaction, 75000, 10);
   }
 
-  // Amount buttons
-  if (interaction.isButton() && /^spice_(50k|75k)_\d+$/.test(interaction.customId)) {
+  // Custom button → modal (10% guild)
+  if (interaction.isButton() && interaction.customId === 'spice_custom') {
     if (!isAuthorized(interaction)) return interaction.reply({ content: '🚫 Not authorized.', ephemeral: true });
-    const parts = interaction.customId.split('_');
-    const amount = parts[1] === '50k' ? 50000 : 75000;
-    const guildPct = parseInt(parts[2]);
-    await showMemberSelect(interaction, amount, guildPct);
+    const modal = new ModalBuilder().setCustomId('modal_spice_amount_10').setTitle('Amount of spice farmed');
+    const input = new TextInputBuilder()
+      .setCustomId('amount_input').setLabel('Amount of spice')
+      .setStyle(TextInputStyle.Short).setPlaceholder('E.g.: 60000').setRequired(true);
+    modal.addComponents(new ActionRowBuilder().addComponents(input));
+    await interaction.showModal(modal);
   }
 
-  // Custom button → modal
-  if (interaction.isButton() && /^spice_custom_\d+$/.test(interaction.customId)) {
+  // 0% Guild button → modal (0% guild)
+  if (interaction.isButton() && interaction.customId === 'spice_0guild') {
     if (!isAuthorized(interaction)) return interaction.reply({ content: '🚫 Not authorized.', ephemeral: true });
-    const guildPct = interaction.customId.split('_')[2];
-    const modal = new ModalBuilder().setCustomId(`modal_spice_amount_${guildPct}`).setTitle('Amount of spice farmed');
+    const modal = new ModalBuilder().setCustomId('modal_spice_amount_0').setTitle('Amount of spice (0% guild)');
     const input = new TextInputBuilder()
       .setCustomId('amount_input').setLabel('Amount of spice')
       .setStyle(TextInputStyle.Short).setPlaceholder('E.g.: 60000').setRequired(true);
